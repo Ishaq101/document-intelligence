@@ -186,13 +186,14 @@ Users can view dashboard with knowledge summary (total files, status) and agent 
 - **FR-033**: System MUST verify correctness (answer proper and correct)
 - **FR-034**: System MUST verify grounded (answer uses internal knowledge, not hallucinated)
 - **FR-035**: System MUST verify clean_format (no broken markdown/formatting)
-- **FR-036**: System MUST verify no PII in output (mask until clean)
+- **FR-036**: System MUST verify no PII in **agent output** (mask until clean) — *distinct from input guardrail FR-010*
 
 #### Observability & Logging
 
-- **FR-037**: System MUST log environment setup, critical process errors, critical debugging info as first priority
+- **FR-037**: System MUST log:
+  - Environment setup and critical process errors (first priority)
+  - Runtime duration in database for dashboard display
 - **FR-038**: System MUST use Langfuse free tier for LLM observability: one trace per chat, spans for sub-processes
-- **FR-039**: System MUST log runtime duration in database for dashboard display
 
 #### Evaluation
 
