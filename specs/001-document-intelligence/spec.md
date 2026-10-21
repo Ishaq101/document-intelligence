@@ -22,9 +22,8 @@ Users can upload PDF documents to the system, which are processed through an int
 
 1. **Given** a PDF with mixed content (text pages, tables, charts, images), **When** user uploads and processes it, **Then** each page routes to correct parser and ingestion completes successfully.
 2. **Given** a scanned PDF, **When** user uploads it, **Then** LlamaParse extracts text via OCR and ingestion succeeds.
-3. **Given** LlamaParse quota exceeded, **When** processing a page requiring LlamaParse, **Then** PaddleOCR is used with notification to user.
-4. **Given** a PDF with duplicate filename, **When** user attempts upload, **Then** system rejects with clear error.
-5. **Given** an existing document, **When** user deletes it, **Then** both PostgreSQL metadata and Qdrant vectors are removed.
+3. **Given** a PDF with duplicate filename, **When** user attempts upload, **Then** system rejects with clear error.
+4. **Given** an existing document, **When** user deletes it, **Then** both PostgreSQL metadata and Qdrant vectors are removed.
 
 ---
 
@@ -134,109 +133,108 @@ Users can view dashboard with knowledge summary (total files, status) and agent 
 - **FR-001**: System MUST accept PDF file uploads up to 50MB
 - **FR-002**: System MUST reject uploads with duplicate filenames (within same upload batch or existing documents)
 - **FR-003**: System MUST route each PDF page to appropriate parser based on content type: images/charts/scanned → LlamaParse, tables → pdfplumber, text-only → pypdf
-- **FR-004**: System MUST fall back to PaddleOCR with user notification when LlamaParse quota exceeded
-- **FR-005**: System MUST chunk documents by page (configurable chunk size default 1, overlap default 0)
-- **FR-006**: System MUST embed chunks using text-embedding-3-small model
-- **FR-007**: System MUST store chunk metadata in PostgreSQL: filename, file_id, chunk_id, page, category, company, content
-- **FR-008**: System MUST store vector embeddings in Qdrant with vector_content field
-- **FR-009**: System MUST delete both PostgreSQL metadata and Qdrant vectors when document deleted
-- **FR-010**: System MUST track document status: pending, processing, completed, failed
+- **FR-004**: System MUST chunk documents by page (configurable chunk size default 1, overlap default 0)
+- **FR-005**: System MUST embed chunks using text-embedding-3-small model
+- **FR-006**: System MUST store chunk metadata in PostgreSQL: filename, file_id, chunk_id, page, category, company, content
+- **FR-007**: System MUST store vector embeddings in Qdrant with vector_content field
+- **FR-008**: System MUST delete both PostgreSQL metadata and Qdrant vectors when document deleted
+- **FR-009**: System MUST track document status: pending, processing, completed, failed
 
 #### Document Agent - Guardrails
 
-- **FR-011**: System MUST detect PII in user input and refuse gracefully without processing
-- **FR-012**: System MUST detect prompt injection/jailbreak attempts and refuse gracefully
-- **FR-013**: System MUST detect NSFW content (crimes, pornography, human trafficking, religion issues) and refuse gracefully
-- **FR-014**: System MUST detect and clean unsafe characters/formatting (HTML tags like <trusted_content>, <safe_for_work>) then continue processing
-- **FR-015**: System MUST detect user language or requested language and respond in that language
+- **FR-010**: System MUST detect PII in user input and refuse gracefully without processing
+- **FR-011**: System MUST detect prompt injection/jailbreak attempts and refuse gracefully
+- **FR-012**: System MUST detect NSFW content (crimes, pornography, human trafficking, religion issues) and refuse gracefully
+- **FR-013**: System MUST detect and clean unsafe characters/formatting (HTML tags like <trusted_content>, <safe_for_work>) then continue processing
+- **FR-014**: System MUST detect user language or requested language and respond in that language
 
 #### Document Agent - Intent Classification
 
-- **FR-016**: System MUST classify intent as need_plan=true for complex multi-task requests
-- **FR-017**: System MUST classify intent as need_plan=false for single-task requests
-- **FR-018**: System MUST classify social_question=true for chit-chat (hello, thank you, bye) and answer directly without retrieval
+- **FR-015**: System MUST classify intent as need_plan=true for complex multi-task requests
+- **FR-016**: System MUST classify intent as need_plan=false for single-task requests
+- **FR-017**: System MUST classify social_question=true for chit-chat (hello, thank you, bye) and answer directly without retrieval
 
 #### Document Agent - Tasks
 
-- **FR-019**: System MUST support document_metadata task: return total document count and document names from knowledge base
-- **FR-020**: System MUST support knowledge_retrieval task: find evidence/facts from knowledge base
-- **FR-021**: System MUST support summary task: summarize chat history without retrieval
+- **FR-018**: System MUST support document_metadata task: return total document count and document names from knowledge base
+- **FR-019**: System MUST support knowledge_retrieval task: find evidence/facts from knowledge base
+- **FR-020**: System MUST support summary task: summarize chat history without retrieval
 
 #### Document Agent - Retrieval
 
-- **FR-022**: System MUST support BM25 keyword search only
-- **FR-023**: System MUST support vector search only
-- **FR-024**: System MUST support hybrid search with RRF (default)
-- **FR-025**: System MUST use top-k=5 by default (configurable via admin)
+- **FR-021**: System MUST support BM25 keyword search only
+- **FR-022**: System MUST support vector search only
+- **FR-023**: System MUST support hybrid search with RRF (default)
+- **FR-024**: System MUST use top-k=5 by default (configurable via admin)
 
 #### Document Agent - Evidence Evaluation
 
-- **FR-026**: System MUST evaluate evidence as sufficient → proceed to generation
-- **FR-027**: System MUST evaluate evidence as not_sufficient → honest response about limitation
-- **FR-028**: System MUST evaluate evidence as not_relevant → rephrase query and re-retrieve once, then honest refusal if still not relevant
+- **FR-025**: System MUST evaluate evidence as sufficient → proceed to generation
+- **FR-026**: System MUST evaluate evidence as not_sufficient → honest response about limitation
+- **FR-027**: System MUST evaluate evidence as not_relevant → rephrase query and re-retrieve once, then honest refusal if still not relevant
 
 #### Document Agent - Generation
 
-- **FR-029**: System MUST use structured output with Pydantic for consistent responses
-- **FR-030**: System MUST limit max output tokens to 4096
-- **FR-031**: System MUST set thinking effort to medium for models supporting it
-- **FR-032**: System MUST stream responses to frontend
-- **FR-033**: System MUST include citations (filename, page, chunk_id) for evidence-based answers via structured output
+- **FR-028**: System MUST use structured output with Pydantic for consistent responses
+- **FR-029**: System MUST limit max output tokens to 4096
+- **FR-030**: System MUST set thinking effort to medium for models supporting it
+- **FR-031**: System MUST stream responses to frontend
+- **FR-032**: System MUST include citations (filename, page, chunk_id) for evidence-based answers via structured output
 
 #### Document Agent - Post-Generation Review
 
-- **FR-034**: System MUST verify correctness (answer proper and correct)
-- **FR-035**: System MUST verify grounded (answer uses internal knowledge, not hallucinated)
-- **FR-036**: System MUST verify clean_format (no broken markdown/formatting)
-- **FR-037**: System MUST verify no PII in output (mask until clean)
+- **FR-033**: System MUST verify correctness (answer proper and correct)
+- **FR-034**: System MUST verify grounded (answer uses internal knowledge, not hallucinated)
+- **FR-035**: System MUST verify clean_format (no broken markdown/formatting)
+- **FR-036**: System MUST verify no PII in output (mask until clean)
 
 #### Observability & Logging
 
-- **FR-038**: System MUST log environment setup, critical process errors, critical debugging info as first priority
-- **FR-039**: System MUST use Langfuse free tier for LLM observability: one trace per chat, spans for sub-processes
-- **FR-040**: System MUST log runtime duration in database for dashboard display
+- **FR-037**: System MUST log environment setup, critical process errors, critical debugging info as first priority
+- **FR-038**: System MUST use Langfuse free tier for LLM observability: one trace per chat, spans for sub-processes
+- **FR-039**: System MUST log runtime duration in database for dashboard display
 
 #### Evaluation
 
-- **FR-041**: System MUST support running evaluation against eval_dataset.jsonl using sample document (Kirana Logistics Annual Report 2025)
+- **FR-040**: System MUST support running evaluation against eval_dataset.jsonl using sample document (Kirana Logistics Annual Report 2025)
 
 #### Frontend - Login
 
-- **FR-042**: System MUST provide login page with seed credentials admin/123456
+- **FR-041**: System MUST provide login page with seed credentials admin/123456
 
 #### Frontend - Knowledge Management
 
-- **FR-043**: System MUST display document list with status
-- **FR-044**: System MUST support PDF upload (<50MB)
-- **FR-045**: System MUST support triggering ingestion processing
-- **FR-046**: System MUST support document deletion (removes from UI and backend)
+- **FR-042**: System MUST display document list with status
+- **FR-043**: System MUST support PDF upload (<50MB)
+- **FR-044**: System MUST support triggering ingestion processing
+- **FR-045**: System MUST support document deletion (removes from UI and backend)
 
 #### Frontend - Agent Chat
 
-- **FR-047**: System MUST provide chat interface with text input
-- **FR-048**: System MUST render streaming responses progressively
-- **FR-049**: System MUST show interactive waiting buffer during response generation
-- **FR-050**: System MUST render citations properly (filename, page, clickable)
-- **FR-051**: System MUST support markdown/HTML output rendering
+- **FR-046**: System MUST provide chat interface with text input
+- **FR-047**: System MUST render streaming responses progressively
+- **FR-048**: System MUST show interactive waiting buffer during response generation
+- **FR-049**: System MUST render citations properly (filename, page, clickable)
+- **FR-050**: System MUST support markdown/HTML output rendering
 
 #### Frontend - Dashboard
 
-- **FR-052**: System MUST display total files and status summary
-- **FR-053**: System MUST display total questions asked
-- **FR-054**: System MUST display runtime stats: fastest, average, longest response time
+- **FR-051**: System MUST display total files and status summary
+- **FR-052**: System MUST display total questions asked
+- **FR-053**: System MUST display runtime stats: fastest, average, longest response time
 
 #### Frontend - Admin
 
-- **FR-055**: System MUST allow configuring chunk size
-- **FR-056**: System MUST allow configuring chunk overlap
-- **FR-057**: System MUST allow configuring retrieval method (BM25, vector, hybrid RRF)
-- **FR-058**: System MUST allow configuring top-k
+- **FR-054**: System MUST allow configuring chunk size
+- **FR-055**: System MUST allow configuring chunk overlap
+- **FR-056**: System MUST allow configuring retrieval method (BM25, vector, hybrid RRF)
+- **FR-057**: System MUST allow configuring top-k
 
 #### Deployment
 
-- **FR-059**: System MUST provide Dockerfile for backend service
-- **FR-060**: System MUST provide Dockerfile for frontend
-- **FR-061**: System MUST support separate deployment to Vercel
+- **FR-058**: System MUST provide Dockerfile for backend service
+- **FR-059**: System MUST provide Dockerfile for frontend
+- **FR-060**: System MUST support separate deployment to Vercel
 
 ---
 
