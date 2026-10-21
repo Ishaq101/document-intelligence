@@ -220,7 +220,7 @@ description: "Task list for Document Intelligence System implementation"
 **Purpose**: Evaluation runner against eval_dataset.jsonl, Langfuse integration verification
 
 - [ ] T095 [P] Create evaluation runner in `service-docintel/evals/run_eval.py` (reads eval_dataset.jsonl, runs agent, compares results)
-- [ ] T096 [P] Update eval_dataset.jsonl to align with current specification
+- [ ] T096 [P] Update eval_dataset.jsonl to align with current specification **(prerequisite for T095)**
 - [ ] T097 [US3] Verify Langfuse traces appear correctly (one trace per chat, spans for guardrails/intent/retrieval/generation/review)
 - [ ] T098 [US3] Add eval results storage to PostgreSQL (eval_runs table)
 - [ ] T099 [US6] Display evaluation results on Dashboard or Admin page
