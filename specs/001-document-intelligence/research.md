@@ -361,3 +361,101 @@ async def update_config(config: AdminConfigUpdate):
 | Admin config | PostgreSQL single-row table | asyncpg |
 
 All unknowns resolved. Ready for Phase 1 design artifacts.
+
+---
+
+## 7. Guardrail Detection Methods
+
+### PII Detection
+**Decision**: Use `presidio-analyzer` (Microsoft Presidio) for entity recognition
+- Supports: PERSON, EMAIL, PHONE_NUMBER, LOCATION, NRP, CREDIT_CARD, etc.
+- Configurable entity types and confidence thresholds
+- Fallback: regex patterns for common formats (email, phone, ID numbers)
+
+### Prompt Injection/Jailbreak Detection
+**Decision**: Hybrid approach
+- Pattern-based: Detect known injection patterns (ignore instructions, system prompt override, etc.)
+- LLM-based: Use small classifier model (or GPT-4o-mini) to score injection probability
+- Threshold: >0.8 confidence → block
+
+### NSFW Content Detection
+**Decision**: Use `transformers` with `unitary/toxic-bert` or `martin-ha/toxic-comment-model`
+- Labels: toxic, severe_toxic, obscene, threat, insult, identity_hate
+- Threshold: >0.7 on any label → block
+- Custom keywords for domain-specific NSFW (crimes, trafficking, religion)
+
+### Language Detection
+**Decision**: Use `fasttext` language identification model (`lid.176.bin`)
+- Supports 176 languages
+- Fast (<1ms), offline, no API calls
+- Fallback: `langdetect` library if fasttext unavailable
+- Confidence threshold: >0.9, else default to English
+
+### Unsafe Character Cleaning
+**Decision**: HTML sanitization with `bleach` library
+- Strip: `<trusted_content>`, `<safe_for_work>`, `<system>`, `<user>`, `<assistant>`, script/style tags
+- Allow: basic markdown formatting tags (b, i, code, pre, a, ul, ol, li)
+- Preserve: Unicode text, emojis
+
+---
+
+## 8. Post-Generation Review Prompt Templates
+
+### Correctness Review
+**Prompt Template**:
+```
+You are a fact-checker. Compare the ANSWER against the EVIDENCE.
+EVIDENCE:
+{evidence_chunks}
+
+ANSWER:
+{answer}
+
+Rate correctness: 
+- "high" = all claims supported by evidence
+- "medium" = minor unsupported claims or minor inaccuracies
+- "low" = major hallucinations or contradicted by evidence
+
+Return JSON: {"correctness": "high|medium|low", "issues": ["specific issue 1", ...]}
+```
+
+### Groundedness Review
+**Prompt Template**:
+```
+You are a groundedness evaluator. Does the ANSWER use ONLY information from the EVIDENCE?
+EVIDENCE:
+{evidence_chunks}
+
+ANSWER:
+{answer}
+
+Check for:
+1. Claims not in evidence (hallucination)
+2. External knowledge inserted
+3. Speculation beyond evidence
+
+Return JSON: {"grounded": true|false, "ungrounded_claims": ["claim 1", ...]}
+```
+
+### Clean Format Review
+**Prompt Template**:
+```
+Check the ANSWER for formatting issues:
+- Broken markdown (unclosed code fences, broken tables, bad links)
+- Incomplete sentences
+- Inconsistent citation format
+- Mixed languages unexpectedly
+
+Return JSON: {"clean_format": true|false, "issues": ["issue 1", ...]}
+```
+
+### PII Masking Review
+**Prompt Template**:
+```
+Scan the ANSWER for PII:
+- Names, emails, phones, addresses, IDs, financial info
+- Any personal identifiers
+
+If found, return masked version with [REDACTED] placeholders.
+Return JSON: {"contain_pii": true|false, "masked_answer": "..."}
+```
