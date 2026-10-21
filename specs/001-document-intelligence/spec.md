@@ -240,7 +240,7 @@ Users can view dashboard with knowledge summary (total files, status) and agent 
 
 ### Key Entities
 
-- **Document**: Represents an uploaded PDF file with attributes: file_id, filename, status, page_count, upload_timestamp, file_size
+- **Document**: Represents an uploaded PDF file with attributes: file_id, user_id, filename, status, page_count, upload_timestamp, file_size
 - **Chunk**: Represents a page-level segment of a document with attributes: chunk_id, file_id, filename, page, category, company, content, vector_content
 - **ChatSession**: Represents a conversation with attributes: session_id, user_id, messages, trace_id (Langfuse), created_at
 - **Message**: Represents a single chat message with attributes: message_id, session_id, role (user/assistant), content, citations, runtime_ms, timestamp

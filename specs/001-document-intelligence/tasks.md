@@ -203,13 +203,13 @@ description: "Task list for Document Intelligence System implementation"
 - [ ] T085 [P] [US6] Create Dashboard page in `frontend/app/dashboard/page.tsx`
 - [ ] T086 [P] [US6] Create Admin page in `frontend/app/admin/page.tsx`
 - [ ] T087 [P] [US6] Create dashboard stats cards in `frontend/components/StatsCard.tsx`
-- [ ] T087 [P] [US6] Create runtime stats chart in `frontend/components/RuntimeChart.tsx`
-- [ ] T088 [US6] Implement dashboard stats endpoint in `service-docintel/app/api/dashboard.py` (GET /dashboard/stats)
-- [ ] T089 [US6] Implement admin config endpoints in `service-docintel/app/api/admin.py` (GET/PUT /admin/config)
-- [ ] T090 [US6] Create admin config form in `frontend/components/AdminConfigForm.tsx` (chunk_size, chunk_overlap, retrieval_method, top_k)
-- [ ] T091 [US6] Add validation for admin config values (chunk_size 1-10, overlap 0-5, top_k 1-50)
-- [ ] T092 [US6] Connect admin config to ingestion pipeline and retrieval (read from DB at runtime)
-- [ ] T093 [US6] Add real-time stats refresh on Dashboard page
+- [ ] T088 [P] [US6] Create runtime stats chart in `frontend/components/RuntimeChart.tsx`
+- [ ] T089 [US6] Implement dashboard stats endpoint in `service-docintel/app/api/dashboard.py` (GET /dashboard/stats)
+- [ ] T090 [US6] Implement admin config endpoints in `service-docintel/app/api/admin.py` (GET/PUT /admin/config)
+- [ ] T091 [US6] Create admin config form in `frontend/components/AdminConfigForm.tsx` (chunk_size, chunk_overlap, retrieval_method, top_k)
+- [ ] T092 [US6] Add validation for admin config values (chunk_size 1-10, overlap 0-5, top_k 1-50)
+- [ ] T093 [US6] Connect admin config to ingestion pipeline and retrieval (read from DB at runtime)
+- [ ] T094 [US6] Add real-time stats refresh on Dashboard page
 
 **Checkpoint**: At this point, User Story 6 should be fully functional - dashboard shows metrics, admin config works
 
@@ -219,11 +219,14 @@ description: "Task list for Document Intelligence System implementation"
 
 **Purpose**: Evaluation runner against eval_dataset.jsonl, Langfuse integration verification
 
-- [ ] T094 [P] Create evaluation runner in `service-docintel/evals/run_eval.py` (reads eval_dataset.jsonl, runs agent, compares results)
-- [ ] T095 [P] Update eval_dataset.jsonl to align with current specification
-- [ ] T096 [US3] Verify Langfuse traces appear correctly (one trace per chat, spans for guardrails/intent/retrieval/generation/review)
-- [ ] T097 [US3] Add eval results storage to PostgreSQL (eval_runs table)
-- [ ] T098 [US6] Display evaluation results on Dashboard or Admin page
+- [ ] T095 [P] Create evaluation runner in `service-docintel/evals/run_eval.py` (reads eval_dataset.jsonl, runs agent, compares results)
+- [ ] T096 [P] Update eval_dataset.jsonl to align with current specification
+- [ ] T097 [US3] Verify Langfuse traces appear correctly (one trace per chat, spans for guardrails/intent/retrieval/generation/review)
+- [ ] T098 [US3] Add eval results storage to PostgreSQL (eval_runs table)
+- [ ] T099 [US6] Display evaluation results on Dashboard or Admin page
++ [ ] T100 [P] [US3] Create retrieval quality metrics in `service-docintel/app/services/agent/retrieval_metrics.py` (precision@k, recall@k, MRR tracking for SC-003)
++ [ ] T101 [P] [US2] Create guardrail test suite in `service-docintel/tests/guardrails/` (PII, injection, NSFW test cases with expected pass/fail for SC-004)
++ [ ] T102 [P] [US2] Add guardrail validation to eval runner (run guardrail tests automatically, report block rate)
 
 ---
 
@@ -231,15 +234,18 @@ description: "Task list for Document Intelligence System implementation"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T099 [P] Add comprehensive error handling and user-friendly error messages
-- [ ] T100 [P] Add request logging middleware in `service-docintel/app/main.py`
-- [ ] T101 [P] Add CORS configuration for frontend origin
-- [ ] T102 [P] Create README.md with setup and deployment instructions
-- [ ] T103 [P] Verify quickstart.md steps work end-to-end
-- [ ] T104 [P] Add Vercel deployment configuration (vercel.json for both services)
-- [ ] T105 [P] Run full eval_dataset.jsonl and verify pass rate
-- [ ] T106 [P] Performance test: 50-page PDF ingestion < 60s, chat response P95 < 10s
-- [ ] T107 [P] Security review: validate all inputs, no SQL injection, proper auth checks
+- [ ] T103 [P] Add comprehensive error handling and user-friendly error messages
+- [ ] T104 [P] Add request logging middleware in `service-docintel/app/main.py`
+- [ ] T105 [P] Add CORS configuration for frontend origin
+- [ ] T106 [P] Create README.md with setup and deployment instructions
+- [ ] T107 [P] Verify quickstart.md steps work end-to-end
+- [ ] T108 [P] Add Vercel deployment configuration (vercel.json for backend)
+- [ ] T109 [P] Add Vercel deployment configuration (vercel.json for frontend)
+- [ ] T110 [P] Run full eval_dataset.jsonl and verify pass rate
+- [ ] T111 [P] Performance test: 50-page PDF ingestion < 60s, chat response P95 < 10s
+- [ ] T112 [P] Security review: validate all inputs, no SQL injection, proper auth checks
++ [ ] T113 [P] Frontend performance: bundle analysis, code splitting, lazy loading for <3s load (SC-007)
++ [ ] T114 [P] Concurrent upload stress test: 5 simultaneous 50MB PDFs (SC-010)
 
 ---
 
@@ -364,9 +370,9 @@ With multiple developers:
 
 ## Summary
 
-- **Total Tasks**: 107
-- **Tasks per User Story**: US1: 14, US2: 19, US3: 13, US4: 8, US5: 9, US6: 9, Foundational: 12, Setup: 9, Polish: 9, Eval: 5
-- **Parallel Opportunities**: 48 tasks marked [P] across all phases
+- **Total Tasks**: 114
+- **Tasks per User Story**: US1: 14, US2: 22, US3: 16, US4: 8, US5: 9, US6: 9, Foundational: 12, Setup: 9, Polish: 12, Eval: 5
+- **Parallel Opportunities**: 54 tasks marked [P] across all phases
 - **Independent Test Criteria**: Each user story has defined independent test in spec.md
 - **Suggested MVP Scope**: User Stories 1-3 (Ingestion + Guardrails/Agent + Retrieval/Generation)
 - **Format Validation**: ALL tasks follow checklist format with checkbox, Task ID, [P] where applicable, [Story] label for user story tasks, exact file paths
