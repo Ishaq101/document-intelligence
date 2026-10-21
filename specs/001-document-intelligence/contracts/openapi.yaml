@@ -1,0 +1,780 @@
+openapi: 3.0.3
+info:
+  title: Document Intelligence API
+  version: 1.0.0
+  description: API for PDF ingestion, document agent chat, and knowledge management
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.document-intelligence.example.com
+    description: Production server
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      description: Client-generated request ID used as chat_id and Langfuse trace_id for observability
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    # Document schemas
+    DocumentStatus:
+      type: string
+      enum: [pending, processing, completed, failed]
+
+    DocumentBase:
+      type: object
+      required:
+        - filename
+        - file_size_bytes
+      properties:
+        filename:
+          type: string
+          maxLength: 255
+        file_size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 50000000
+
+    DocumentCreate:
+      allOf:
+        - $ref: '#/components/schemas/DocumentBase'
+
+    DocumentResponse:
+      allOf:
+        - $ref: '#/components/schemas/DocumentBase'
+        - type: object
+          required:
+            - file_id
+            - user_id
+            - status
+            - page_count
+            - upload_timestamp
+          properties:
+            file_id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/DocumentStatus'
+            page_count:
+              type: integer
+              minimum: 0
+            upload_timestamp:
+              type: string
+              format: date-time
+            processed_timestamp:
+              type: string
+              format: date-time
+            error_message:
+              type: string
+
+    DocumentListResponse:
+      type: object
+      required:
+        - documents
+        - total
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+        total:
+          type: integer
+
+    # Chunk schemas
+    ChunkBase:
+      type: object
+      required:
+        - filename
+        - file_id
+        - page
+        - content
+      properties:
+        filename:
+          type: string
+        file_id:
+          type: string
+          format: uuid
+        page:
+          type: integer
+          minimum: 1
+        category:
+          type: string
+        company:
+          type: string
+        content:
+          type: string
+
+    ChunkResponse:
+      allOf:
+        - $ref: '#/components/schemas/ChunkBase'
+        - type: object
+          required:
+            - chunk_id
+            - created_at
+          properties:
+            chunk_id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+
+    # Citation schema
+    Citation:
+      type: object
+      required:
+        - filename
+        - page
+        - chunk_id
+      properties:
+        filename:
+          type: string
+        page:
+          type: integer
+          minimum: 1
+        chunk_id:
+          type: string
+          format: uuid
+        excerpt:
+          type: string
+
+    # Chat schemas
+    ChatRequest:
+      type: object
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        session_id:
+          type: string
+          format: uuid
+
+    ChatResponse:
+      type: object
+      required:
+        - session_id
+        - answer
+        - runtime_ms
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        answer:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+        runtime_ms:
+          type: integer
+
+    # SSE Event schemas
+    ChatEventStart:
+      type: object
+      required:
+        - type
+        - session_id
+      properties:
+        type:
+          type: string
+          enum: [start]
+        session_id:
+          type: string
+          format: uuid
+
+    ChatEventToken:
+      type: object
+      required:
+        - type
+        - content
+      properties:
+        type:
+          type: string
+          enum: [token]
+        content:
+          type: string
+
+    ChatEventCitations:
+      type: object
+      required:
+        - type
+        - citations
+      properties:
+        type:
+          type: string
+          enum: [citations]
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+
+    ChatEventDone:
+      type: object
+      required:
+        - type
+        - runtime_ms
+      properties:
+        type:
+          type: string
+          enum: [done]
+        runtime_ms:
+          type: integer
+
+    ChatEventError:
+      type: object
+      required:
+        - type
+        - message
+      properties:
+        type:
+          type: string
+          enum: [error]
+        message:
+          type: string
+
+    # Admin config schemas
+    RetrievalMethod:
+      type: string
+      enum: [bm25, vector, hybrid_rrf]
+
+    AdminConfigResponse:
+      type: object
+      required:
+        - chunk_size
+        - chunk_overlap
+        - retrieval_method
+        - top_k
+      properties:
+        chunk_size:
+          type: integer
+          minimum: 1
+          maximum: 10
+        chunk_overlap:
+          type: integer
+          minimum: 0
+          maximum: 5
+        retrieval_method:
+          $ref: '#/components/schemas/RetrievalMethod'
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 50
+
+    AdminConfigUpdate:
+      type: object
+      properties:
+        chunk_size:
+          type: integer
+          minimum: 1
+          maximum: 10
+        chunk_overlap:
+          type: integer
+          minimum: 0
+          maximum: 5
+        retrieval_method:
+          $ref: '#/components/schemas/RetrievalMethod'
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 50
+
+    # Dashboard schemas
+    RuntimeStats:
+      type: object
+      required:
+        - fastest_ms
+        - average_ms
+        - longest_ms
+      properties:
+        fastest_ms:
+          type: integer
+        average_ms:
+          type: number
+        longest_ms:
+          type: integer
+
+    DashboardStats:
+      type: object
+      required:
+        - total_files
+        - status_counts
+        - total_questions
+        - runtime_stats
+      properties:
+        total_files:
+          type: integer
+        status_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        total_questions:
+          type: integer
+        runtime_stats:
+          $ref: '#/components/schemas/RuntimeStats'
+
+    # Evaluation schemas
+    EvalRunRequest:
+      type: object
+      properties:
+        dataset_path:
+          type: string
+          default: "evals/datasets/eval_dataset.jsonl"
+
+    EvalRunResponse:
+      type: object
+      required:
+        - run_id
+        - total_cases
+        - passed
+        - failed
+        - pass_rate
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        total_cases:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        pass_rate:
+          type: number
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              test_case_id:
+                type: string
+              passed:
+                type: boolean
+              predicted_answer:
+                type: string
+              expected_answer:
+                type: string
+              runtime_ms:
+                type: integer
+
+    # Error schema
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+
+  /documents/upload:
+    post:
+      summary: Upload PDF document
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid file (not PDF, too large, duplicate filename)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large (>50MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documents:
+    get:
+      summary: List all documents
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DocumentStatus'
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+
+  /documents/{file_id}:
+    get:
+      summary: Get document by ID
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete document (removes from PostgreSQL and Qdrant)
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Document deleted
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documents/{file_id}/process:
+    post:
+      summary: Trigger ingestion processing for document
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Document not in pending status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documents/{file_id}/chunks:
+    get:
+      summary: List chunks for a document
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of chunks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChunkResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /chat:
+    post:
+      summary: Chat with document agent (streaming SSE)
+      description: |
+        Client MUST provide X-Request-Id header (UUID) which becomes the chat_id and Langfuse trace_id.
+        One trace per chat request, with spans for guardrails, intent, retrieval, generation, review.
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Streaming response (Server-Sent Events)
+          content:
+            text/event-stream:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ChatEventStart'
+                  - $ref: '#/components/schemas/ChatEventToken'
+                  - $ref: '#/components/schemas/ChatEventCitations'
+                  - $ref: '#/components/schemas/ChatEventDone'
+                  - $ref: '#/components/schemas/ChatEventError'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /chat/sessions:
+    get:
+      summary: List chat sessions
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of chat sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: string
+                          format: uuid
+                        user_id:
+                          type: string
+                          format: uuid
+                        trace_id:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        updated_at:
+                          type: string
+                          format: date-time
+                  total:
+                    type: integer
+
+  /chat/sessions/{session_id}:
+    get:
+      summary: Get chat session with messages
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Chat session with messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                  user_id:
+                    type: string
+                    format: uuid
+                  trace_id:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message_id:
+                          type: string
+                          format: uuid
+                        session_id:
+                          type: string
+                          format: uuid
+                        role:
+                          type: string
+                          enum: [user, assistant]
+                        content:
+                          type: string
+                        citations:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/Citation'
+                        runtime_ms:
+                          type: integer
+                        timestamp:
+                          type: string
+                          format: date-time
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dashboard/stats:
+    get:
+      summary: Get dashboard statistics
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /admin/config:
+    get:
+      summary: Get admin configuration
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        '200':
+          description: Current admin config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminConfigResponse'
+    put:
+      summary: Update admin configuration
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminConfigUpdate'
+      responses:
+        '200':
+          description: Updated admin config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminConfigResponse'
+
+  /eval/run:
+    post:
+      summary: Run evaluation against dataset
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvalRunRequest'
+      responses:
+        '200':
+          description: Evaluation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRunResponse'
