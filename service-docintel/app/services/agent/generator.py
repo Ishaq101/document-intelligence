@@ -23,6 +23,7 @@ Instructions:
 4. Keep answers concise but complete
 5. Use the same language as the question
 6. Return a human-readable answer in plain text. Never output JSON, XML, YAML, or code unless the user explicitly asks for it.
+7. Do NOT include inline source markers like [Chunk 1], [1], or (Source: ...) in your answer text. Citations are tracked separately. Write the answer as clean prose.
 
 Context chunks will be provided with their source filename, page number, and content."""
 
