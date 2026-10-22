@@ -295,11 +295,25 @@ class AgentOrchestration:
                     evidence_sufficient=evidence_status == EvidenceStatus.SUFFICIENT,
                     language=intent.language,
                 )
-                await review_answer(temp_answer, chunks)
+                reviewed = await review_answer(temp_answer, chunks)
+                if reviewed and reviewed.repaired_answer:
+                    full_answer = reviewed.repaired_answer
+
+        # Build IEEE-style citations from retrieved chunks.
+        citations = [
+            {
+                "filename": chunk.filename,
+                "page": chunk.page,
+                "chunk_id": str(chunk.chunk_id),
+                "excerpt": chunk.content[:160],
+            }
+            for chunk in chunks
+        ]
 
         runtime_ms = int((time.perf_counter() - start_time) * 1000)
-        await add_message(session_id, "assistant", full_answer, [], runtime_ms)
-        yield {"type": "done", "answer": full_answer}
+        await add_message(session_id, "assistant", full_answer, citations, runtime_ms)
+        yield {"type": "citations", "citations": citations}
+        yield {"type": "done", "answer": full_answer, "runtime_ms": runtime_ms}
 
     def _format_task_results(self, task_results: dict, task_types: list[TaskType]) -> str:
         """Format task results into a readable answer."""
